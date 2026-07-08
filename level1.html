@@ -5,71 +5,101 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Vault Breaker - Game</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&display=swap" rel="stylesheet">
   <style>
     body {
+      margin: 0;
+      min-height: 100vh;
       text-align: center;
-      font-family: 'Orbitron', sans-serif;
-      background-color: #f5f5f5;
+      color: #cdd8e6;
+      font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+      background-color: #0d1421;
       background-image:
-        repeating-linear-gradient(0deg, #dcdcdc, #dcdcdc 1px, transparent 1px, transparent 40px),
-        repeating-linear-gradient(90deg, #dcdcdc, #dcdcdc 1px, transparent 1px, transparent 40px);
+        repeating-linear-gradient(0deg, #111c2e, #111c2e 1px, transparent 1px, transparent 40px),
+        repeating-linear-gradient(90deg, #111c2e, #111c2e 1px, transparent 1px, transparent 40px);
     }
-    h1 { font-size: 48px; margin-top: 40px; margin-bottom: 5px; }
-    #level { font-size: 20px; }
+    #wrap { width: 484px; margin: 34px auto 12px; text-align: left; }
+    #hud {
+      box-sizing: border-box;
+      width: 100%;
+      height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      margin-bottom: 10px;
+      background-color: #0f1826;
+      border: 2px solid #33506e;
+      border-radius: 6px;
+    }
+    #menuBtn {
+      background: transparent;
+      border: none;
+      color: #cdd8e6;
+      font-family: inherit;
+      font-size: 15px;
+      cursor: pointer;
+      padding: 0;
+    }
+    #menuBtn:hover { color: #ffffff; }
+    #hudRight { display: flex; align-items: center; gap: 12px; }
+    #lvl { font-family: 'Orbitron', sans-serif; font-weight: 700; letter-spacing: 2px; color: #ffffff; font-size: 15px; }
+    #score { font-family: 'Orbitron', sans-serif; font-weight: 700; color: #f5c542; font-size: 15px; }
     #gameBox {
-      display: inline-block;
-      margin: 20px auto;
-      border: 3px solid #333;
-      background-color: #ffffff;
+      box-sizing: border-box;
+      width: 100%;
+      overflow: hidden;
+      background-color: #0f1826;
+      border: 2px solid #33506e;
+      border-radius: 6px;
       background-image:
-        repeating-linear-gradient(0deg, #e6e6e6, #e6e6e6 1px, transparent 1px, transparent 40px),
-        repeating-linear-gradient(90deg, #e6e6e6, #e6e6e6 1px, transparent 1px, transparent 40px);
+        repeating-linear-gradient(0deg, #182740, #182740 1px, transparent 1px, transparent 40px),
+        repeating-linear-gradient(90deg, #182740, #182740 1px, transparent 1px, transparent 40px);
     }
-    canvas { display: block; }
-    #backBtn {
-      position: fixed;
-      top: 15px;
-      right: 15px;
-      font-size: 18px;
-      padding: 10px 20px;
-      font-family: 'Orbitron', sans-serif;
-    }
+    canvas { display: block; touch-action: none; }
+    #controls { color: #6f7f96; font-size: 13px; margin: 0 auto 30px; }
   </style>
 </head>
 <body>
 
-  <h1>Vault Breaker</h1>
-  <p>Level 1</p>
-
-  <div id="gameBox">
-    <canvas id="gameCanvas" width="480" height="600"></canvas>
+  <div id="wrap">
+    <div id="hud">
+      <button id="menuBtn" onclick="location.href='index.html'">&larr; Menu</button>
+      <div id="hudRight">
+        <span id="lvl">LVL 1</span>
+        <span id="score">0</span>
+      </div>
+    </div>
+    <div id="gameBox">
+      <canvas id="gameCanvas" width="480" height="600"></canvas>
+    </div>
   </div>
 
-  <button id="backBtn" onclick="location.href='index.html'">Back to Menu</button>
+  <p id="controls">Move: mouse / touch / arrow keys &nbsp;&bull;&nbsp; Launch: space / click / tap</p>
 
   <script>
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
 
-    const paddle = {
-      width: 90,
-      height: 14,
-      x: canvas.width / 2 - 45,
-      y: canvas.height - 30,
-      speed: 7
-    };
+    // ----- Paddle -----
+    const paddle = { width: 90, height: 14, x: canvas.width / 2 - 45, y: canvas.height - 34, speed: 7 };
 
-    const ball = { x: 0, y: 0, radius: 12, dx: 0, dy: 0 };
-    const BALL_SPEED = 4.5;
+    // ----- Ball -----
+    const ball = { x: 0, y: 0, radius: 9, dx: 0, dy: 0 };
+    const BALL_SPEED = 4.6;
 
-    const vault = { w: 92, h: 92, x: canvas.width - 100, y: 8, img: new Image(), loaded: false };
+    // ----- Vault (top-right) -----
+    const vault = { w: 92, h: 92, x: canvas.width - 100, y: 10, img: new Image(), loaded: false };
     vault.img.onload = () => { vault.loaded = true; };
     vault.img.src = 'vault.png';
 
+    // ----- Blocks -----
     const blockW = 44;
     const blockH = 44;
     const blockGap = 4;
+    const BLOCK_HITS = 2;
+    const BLOCK_COLOR = '#35506e';
+    const RIVET = '#243c57';
     let blocks = [];
 
     function buildBlocks() {
@@ -77,7 +107,7 @@
       const cols = 5;
       const rows = 4;
       const startX = canvas.width - cols * (blockW + blockGap);
-      const startY = 6;
+      const startY = 8;
       for (let r = 0; r < rows; r++) {
         for (let c = 0; c < cols; c++) {
           const bx = startX + c * (blockW + blockGap);
@@ -86,33 +116,41 @@
               by + blockH > vault.y && by < vault.y + vault.h) {
             continue;
           }
-          blocks.push({ x: bx, y: by, w: blockW, h: blockH, alive: true });
+          blocks.push({ x: bx, y: by, w: blockW, h: blockH, alive: true, hits: BLOCK_HITS });
         }
       }
     }
 
+    // ----- State -----
     let gameOver = false;
     let won = false;
+    let launched = false;
+    let score = 0;
     let leftPressed = false;
     let rightPressed = false;
 
+    function updateScore() { document.getElementById('score').textContent = score; }
+
     function resetGame() {
-      ball.x = canvas.width / 2;
-      ball.y = canvas.height / 2;
-      const angle = (Math.random() * 0.6) - 0.3;
-      ball.dx = BALL_SPEED * Math.sin(angle);
-      ball.dy = BALL_SPEED * Math.cos(angle);
       paddle.x = canvas.width / 2 - paddle.width / 2;
+      ball.dx = 0; ball.dy = 0;
       buildBlocks();
-      gameOver = false;
-      won = false;
+      score = 0; updateScore();
+      gameOver = false; won = false; launched = false;
+    }
+
+    function launch() {
+      if (launched) return;
+      const angle = (Math.random() * 0.4) - 0.2;
+      ball.dx = BALL_SPEED * Math.sin(angle);
+      ball.dy = -BALL_SPEED * Math.cos(angle);
+      launched = true;
     }
 
     function ballHitsRect(b, r) {
-      const closestX = Math.max(r.x, Math.min(b.x, r.x + r.w));
-      const closestY = Math.max(r.y, Math.min(b.y, r.y + r.h));
-      const dx = b.x - closestX;
-      const dy = b.y - closestY;
+      const cx = Math.max(r.x, Math.min(b.x, r.x + r.w));
+      const cy = Math.max(r.y, Math.min(b.y, r.y + r.h));
+      const dx = b.x - cx, dy = b.y - cy;
       return (dx * dx + dy * dy) <= b.radius * b.radius;
     }
 
@@ -121,12 +159,9 @@
       const overlapRight = (r.x + r.w) - (ball.x - ball.radius);
       const overlapTop = (ball.y + ball.radius) - r.y;
       const overlapBottom = (r.y + r.h) - (ball.y - ball.radius);
-      const minOverlap = Math.min(overlapLeft, overlapRight, overlapTop, overlapBottom);
-      if (minOverlap === overlapLeft || minOverlap === overlapRight) {
-        ball.dx = -ball.dx;
-      } else {
-        ball.dy = -ball.dy;
-      }
+      const m = Math.min(overlapLeft, overlapRight, overlapTop, overlapBottom);
+      if (m === overlapLeft || m === overlapRight) ball.dx = -ball.dx;
+      else ball.dy = -ball.dy;
     }
 
     function update() {
@@ -135,6 +170,13 @@
       if (paddle.x < 0) paddle.x = 0;
       if (paddle.x + paddle.width > canvas.width) paddle.x = canvas.width - paddle.width;
 
+      // Ball rests on the paddle until launched
+      if (!launched) {
+        ball.x = paddle.x + paddle.width / 2;
+        ball.y = paddle.y - ball.radius - 2;
+        return;
+      }
+
       ball.x += ball.dx;
       ball.y += ball.dy;
 
@@ -142,6 +184,7 @@
       if (ball.x - ball.radius < 0) { ball.x = ball.radius; ball.dx = -ball.dx; }
       if (ball.y - ball.radius < 0) { ball.y = ball.radius; ball.dy = -ball.dy; }
 
+      // Paddle
       if (ball.dy > 0 &&
           ball.y + ball.radius >= paddle.y &&
           ball.y + ball.radius <= paddle.y + paddle.height + Math.abs(ball.dy) &&
@@ -149,102 +192,103 @@
         let hitPos = (ball.x - (paddle.x + paddle.width / 2)) / (paddle.width / 2);
         hitPos = Math.max(-1, Math.min(1, hitPos));
         const speed = Math.hypot(ball.dx, ball.dy);
-        const maxAngle = Math.PI / 3;
-        const angle = hitPos * maxAngle;
+        const angle = hitPos * (Math.PI / 3);
         ball.dx = speed * Math.sin(angle);
         ball.dy = -Math.abs(speed * Math.cos(angle));
         ball.y = paddle.y - ball.radius;
       }
 
+      // Blocks
       for (const bl of blocks) {
         if (bl.alive && ballHitsRect(ball, bl)) {
-          bl.alive = false;
+          bl.hits--;
+          if (bl.hits <= 0) { bl.alive = false; score++; updateScore(); }
           bounceOffRect(bl);
           break;
         }
       }
 
-      if (ballHitsRect(ball, vault)) {
-        won = true;
-      }
+      // Vault -> win
+      if (ballHitsRect(ball, vault)) won = true;
 
-      if (ball.y - ball.radius > canvas.height) {
-        gameOver = true;
-      }
+      // Lose
+      if (ball.y - ball.radius > canvas.height) gameOver = true;
     }
 
     function drawVault() {
-      if (vault.loaded) {
-        ctx.drawImage(vault.img, vault.x, vault.y, vault.w, vault.h);
-      } else {
-        ctx.fillStyle = '#f5c542';
-        ctx.fillRect(vault.x, vault.y, vault.w, vault.h);
-        ctx.lineWidth = 3;
-        ctx.strokeStyle = '#8a6d1a';
-        ctx.strokeRect(vault.x, vault.y, vault.w, vault.h);
-        ctx.fillStyle = '#5a4a10';
-        ctx.font = '16px Orbitron, sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText('VAULT', vault.x + vault.w / 2, vault.y + vault.h / 2 + 6);
-      }
+      const x = vault.x, y = vault.y, w = vault.w, h = vault.h;
+      if (vault.loaded) { ctx.drawImage(vault.img, x, y, w, h); return; }
+      // Gold placeholder with a safe-dial icon
+      ctx.fillStyle = '#f5c542';
+      ctx.beginPath(); ctx.roundRect(x, y, w, h, 8); ctx.fill();
+      ctx.lineWidth = 4; ctx.strokeStyle = '#d9a91a';
+      ctx.beginPath(); ctx.roundRect(x + 3, y + 3, w - 6, h - 6, 6); ctx.stroke();
+      const cx = x + w / 2, cy = y + h / 2, r = w * 0.22;
+      ctx.strokeStyle = '#1a1a1a'; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx, cy - r * 0.8); ctx.stroke();
+      ctx.fillStyle = '#1a1a1a';
+      ctx.beginPath(); ctx.arc(cx, cy, 2.5, 0, Math.PI * 2); ctx.fill();
     }
 
     function draw() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+      // Blocks
       for (const bl of blocks) {
         if (!bl.alive) continue;
-        ctx.fillStyle = '#607d8b';
-        ctx.fillRect(bl.x, bl.y, bl.w, bl.h);
-        ctx.lineWidth = 2;
-        ctx.strokeStyle = '#37474f';
-        ctx.strokeRect(bl.x, bl.y, bl.w, bl.h);
+        ctx.fillStyle = BLOCK_COLOR;
+        ctx.beginPath(); ctx.roundRect(bl.x, bl.y, bl.w, bl.h, 6); ctx.fill();
+        ctx.fillStyle = RIVET;
+        const p = 8;
+        for (const rv of [[p, p], [bl.w - p, p], [p, bl.h - p], [bl.w - p, bl.h - p]]) {
+          ctx.beginPath(); ctx.arc(bl.x + rv[0], bl.y + rv[1], 2, 0, Math.PI * 2); ctx.fill();
+        }
+        ctx.fillStyle = '#dbe4f0';
+        ctx.font = 'bold 18px "Orbitron", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(bl.hits, bl.x + bl.w / 2, bl.y + bl.h / 2 + 6);
       }
 
       drawVault();
 
-      ctx.beginPath();
-      ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+      // Ball
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath(); ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2); ctx.fill();
+
+      // Paddle (white with gold center)
+      ctx.fillStyle = '#eef1f5';
+      ctx.beginPath(); ctx.roundRect(paddle.x, paddle.y, paddle.width, paddle.height, paddle.height / 2); ctx.fill();
+      const cw = paddle.width * 0.26;
       ctx.fillStyle = '#f5c542';
-      ctx.fill();
-      ctx.lineWidth = 2;
-      ctx.strokeStyle = '#333';
-      ctx.stroke();
-      ctx.closePath();
+      ctx.beginPath(); ctx.roundRect(paddle.x + paddle.width / 2 - cw / 2, paddle.y, cw, paddle.height, 3); ctx.fill();
 
-      ctx.fillStyle = '#333';
-      ctx.fillRect(paddle.x, paddle.y, paddle.width, paddle.height);
+      // Launch prompt
+      if (!launched) {
+        ctx.fillStyle = '#8a9bb2';
+        ctx.font = '20px system-ui, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('Space / click / tap to launch', canvas.width / 2, canvas.height / 2);
+      }
     }
 
-    function drawGameOver() {
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.75)';
+    function drawOverlay(title, titleColor, subtitle) {
+      ctx.fillStyle = 'rgba(13, 20, 33, 0.82)';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
       ctx.textAlign = 'center';
-      ctx.fillStyle = '#c0392b';
-      ctx.font = '40px Orbitron, sans-serif';
-      ctx.fillText('GAME OVER', canvas.width / 2, canvas.height / 2 - 10);
-      ctx.fillStyle = '#333';
-      ctx.font = '18px Orbitron, sans-serif';
-      ctx.fillText('Click or press Space to retry', canvas.width / 2, canvas.height / 2 + 30);
-    }
-
-    function drawWin() {
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.textAlign = 'center';
-      ctx.fillStyle = '#2e7d32';
-      ctx.font = '36px Orbitron, sans-serif';
-      ctx.fillText('VAULT CRACKED!', canvas.width / 2, canvas.height / 2 - 10);
-      ctx.fillStyle = '#333';
-      ctx.font = '18px Orbitron, sans-serif';
-      ctx.fillText('Click or press Space to play again', canvas.width / 2, canvas.height / 2 + 30);
+      ctx.fillStyle = titleColor;
+      ctx.font = 'bold 36px "Orbitron", sans-serif';
+      ctx.fillText(title, canvas.width / 2, canvas.height / 2 - 10);
+      ctx.fillStyle = '#cdd8e6';
+      ctx.font = '16px system-ui, sans-serif';
+      ctx.fillText(subtitle, canvas.width / 2, canvas.height / 2 + 26);
     }
 
     function loop() {
       if (won) {
-        drawWin();
+        drawOverlay('VAULT CRACKED!', '#f5c542', 'Click or press Space to play again');
       } else if (gameOver) {
-        drawGameOver();
+        drawOverlay('GAME OVER', '#ff5a5a', 'Click or press Space to retry');
       } else {
         update();
         draw();
@@ -252,10 +296,16 @@
       requestAnimationFrame(loop);
     }
 
+    // ----- Input -----
+    function primaryAction() {
+      if (gameOver || won) resetGame();
+      else if (!launched) launch();
+    }
+
     document.addEventListener('keydown', (e) => {
       if (e.key === 'ArrowLeft') { leftPressed = true; e.preventDefault(); }
       if (e.key === 'ArrowRight') { rightPressed = true; e.preventDefault(); }
-      if ((e.key === ' ' || e.key === 'Enter') && (gameOver || won)) { resetGame(); e.preventDefault(); }
+      if (e.key === ' ' || e.key === 'Enter') { primaryAction(); e.preventDefault(); }
     });
     document.addEventListener('keyup', (e) => {
       if (e.key === 'ArrowLeft') leftPressed = false;
@@ -263,12 +313,20 @@
     });
     canvas.addEventListener('mousemove', (e) => {
       const rect = canvas.getBoundingClientRect();
-      let mouseX = e.clientX - rect.left;
-      paddle.x = mouseX - paddle.width / 2;
+      paddle.x = (e.clientX - rect.left) - paddle.width / 2;
       if (paddle.x < 0) paddle.x = 0;
       if (paddle.x + paddle.width > canvas.width) paddle.x = canvas.width - paddle.width;
     });
-    canvas.addEventListener('click', () => { if (gameOver || won) resetGame(); });
+    canvas.addEventListener('click', primaryAction);
+    canvas.addEventListener('touchmove', (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const t = e.touches[0];
+      paddle.x = (t.clientX - rect.left) - paddle.width / 2;
+      if (paddle.x < 0) paddle.x = 0;
+      if (paddle.x + paddle.width > canvas.width) paddle.x = canvas.width - paddle.width;
+      e.preventDefault();
+    }, { passive: false });
+    canvas.addEventListener('touchstart', (e) => { primaryAction(); e.preventDefault(); }, { passive: false });
 
     resetGame();
     loop();
