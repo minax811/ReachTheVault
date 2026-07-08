@@ -1,5 +1,5 @@
-# About Corner Break
-Corner Break is a game where you have blocks surrounding a vault and you have to break the blocks in order to touch the vault and win the game.You have to control a ball by clicking to launch it and the ball's trajectory can be controlled by a platform.If the ball drops below the line of sight, you lose.There are a total of 3 levels in the game. The speed increases after each level
+# About ReachTheVault
+ReachTheVault is a game where you have blocks surrounding a vault and you have to break the blocks in order to touch the vault and win the game.You have to control a ball by clicking to launch it and the ball's trajectory can be controlled by a platform.If the ball drops below the line of sight, you lose.There are a total of 3 levels in the game. The speed increases after each level
 
 # How to play
 you manuvar the ball by hitting it with a platform, the angle of its trajectory is decided by the place where the ball strikes the padel. Hitting at dead centre means it goes straight up at an angle of 90 degress and if you hit at an angle it gets projected at an angle as low as 30 degrees(for the paddle to the line of trajectory)
