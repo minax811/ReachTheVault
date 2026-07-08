@@ -63,7 +63,36 @@
     const ball = { x: 0, y: 0, radius: 12, dx: 0, dy: 0 };
     const BALL_SPEED = 4.5;
 
+    const vault = { w: 92, h: 92, x: canvas.width - 100, y: 8, img: new Image(), loaded: false };
+    vault.img.onload = () => { vault.loaded = true; };
+    vault.img.src = 'vault.png';
+
+    const blockW = 44;
+    const blockH = 44;
+    const blockGap = 4;
+    let blocks = [];
+
+    function buildBlocks() {
+      blocks = [];
+      const cols = 5;
+      const rows = 4;
+      const startX = canvas.width - cols * (blockW + blockGap);
+      const startY = 6;
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          const bx = startX + c * (blockW + blockGap);
+          const by = startY + r * (blockH + blockGap);
+          if (bx + blockW > vault.x && bx < vault.x + vault.w &&
+              by + blockH > vault.y && by < vault.y + vault.h) {
+            continue;
+          }
+          blocks.push({ x: bx, y: by, w: blockW, h: blockH, alive: true });
+        }
+      }
+    }
+
     let gameOver = false;
+    let won = false;
     let leftPressed = false;
     let rightPressed = false;
 
@@ -74,7 +103,30 @@
       ball.dx = BALL_SPEED * Math.sin(angle);
       ball.dy = BALL_SPEED * Math.cos(angle);
       paddle.x = canvas.width / 2 - paddle.width / 2;
+      buildBlocks();
       gameOver = false;
+      won = false;
+    }
+
+    function ballHitsRect(b, r) {
+      const closestX = Math.max(r.x, Math.min(b.x, r.x + r.w));
+      const closestY = Math.max(r.y, Math.min(b.y, r.y + r.h));
+      const dx = b.x - closestX;
+      const dy = b.y - closestY;
+      return (dx * dx + dy * dy) <= b.radius * b.radius;
+    }
+
+    function bounceOffRect(r) {
+      const overlapLeft = (ball.x + ball.radius) - r.x;
+      const overlapRight = (r.x + r.w) - (ball.x - ball.radius);
+      const overlapTop = (ball.y + ball.radius) - r.y;
+      const overlapBottom = (r.y + r.h) - (ball.y - ball.radius);
+      const minOverlap = Math.min(overlapLeft, overlapRight, overlapTop, overlapBottom);
+      if (minOverlap === overlapLeft || minOverlap === overlapRight) {
+        ball.dx = -ball.dx;
+      } else {
+        ball.dy = -ball.dy;
+      }
     }
 
     function update() {
@@ -97,11 +149,23 @@
         let hitPos = (ball.x - (paddle.x + paddle.width / 2)) / (paddle.width / 2);
         hitPos = Math.max(-1, Math.min(1, hitPos));
         const speed = Math.hypot(ball.dx, ball.dy);
-        const maxAngle = Math.PI / 3; 
+        const maxAngle = Math.PI / 3;
         const angle = hitPos * maxAngle;
         ball.dx = speed * Math.sin(angle);
         ball.dy = -Math.abs(speed * Math.cos(angle));
         ball.y = paddle.y - ball.radius;
+      }
+
+      for (const bl of blocks) {
+        if (bl.alive && ballHitsRect(ball, bl)) {
+          bl.alive = false;
+          bounceOffRect(bl);
+          break;
+        }
+      }
+
+      if (ballHitsRect(ball, vault)) {
+        won = true;
       }
 
       if (ball.y - ball.radius > canvas.height) {
@@ -109,8 +173,35 @@
       }
     }
 
+    function drawVault() {
+      if (vault.loaded) {
+        ctx.drawImage(vault.img, vault.x, vault.y, vault.w, vault.h);
+      } else {
+        ctx.fillStyle = '#f5c542';
+        ctx.fillRect(vault.x, vault.y, vault.w, vault.h);
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = '#8a6d1a';
+        ctx.strokeRect(vault.x, vault.y, vault.w, vault.h);
+        ctx.fillStyle = '#5a4a10';
+        ctx.font = '16px Orbitron, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('VAULT', vault.x + vault.w / 2, vault.y + vault.h / 2 + 6);
+      }
+    }
+
     function draw() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      for (const bl of blocks) {
+        if (!bl.alive) continue;
+        ctx.fillStyle = '#607d8b';
+        ctx.fillRect(bl.x, bl.y, bl.w, bl.h);
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = '#37474f';
+        ctx.strokeRect(bl.x, bl.y, bl.w, bl.h);
+      }
+
+      drawVault();
 
       ctx.beginPath();
       ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
@@ -137,12 +228,26 @@
       ctx.fillText('Click or press Space to retry', canvas.width / 2, canvas.height / 2 + 30);
     }
 
+    function drawWin() {
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#2e7d32';
+      ctx.font = '36px Orbitron, sans-serif';
+      ctx.fillText('VAULT CRACKED!', canvas.width / 2, canvas.height / 2 - 10);
+      ctx.fillStyle = '#333';
+      ctx.font = '18px Orbitron, sans-serif';
+      ctx.fillText('Click or press Space to play again', canvas.width / 2, canvas.height / 2 + 30);
+    }
+
     function loop() {
-      if (!gameOver) {
+      if (won) {
+        drawWin();
+      } else if (gameOver) {
+        drawGameOver();
+      } else {
         update();
         draw();
-      } else {
-        drawGameOver();
       }
       requestAnimationFrame(loop);
     }
@@ -150,7 +255,7 @@
     document.addEventListener('keydown', (e) => {
       if (e.key === 'ArrowLeft') { leftPressed = true; e.preventDefault(); }
       if (e.key === 'ArrowRight') { rightPressed = true; e.preventDefault(); }
-      if ((e.key === ' ' || e.key === 'Enter') && gameOver) { resetGame(); e.preventDefault(); }
+      if ((e.key === ' ' || e.key === 'Enter') && (gameOver || won)) { resetGame(); e.preventDefault(); }
     });
     document.addEventListener('keyup', (e) => {
       if (e.key === 'ArrowLeft') leftPressed = false;
@@ -163,7 +268,7 @@
       if (paddle.x < 0) paddle.x = 0;
       if (paddle.x + paddle.width > canvas.width) paddle.x = canvas.width - paddle.width;
     });
-    canvas.addEventListener('click', () => { if (gameOver) resetGame(); });
+    canvas.addEventListener('click', () => { if (gameOver || won) resetGame(); });
 
     resetGame();
     loop();
